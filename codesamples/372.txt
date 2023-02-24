@@ -1,0 +1,111 @@
+import OffersV2 from 0xb8ea91944fd51c43
+import DapperOffersV2 from 0xb8ea91944fd51c43
+import TopShot from 0x0b2a3299cc857e29
+import NonFungibleToken from 0x1d7e57aa55817448
+import FungibleToken from 0xf233dcee88fe0abe
+import DapperUtilityCoin from 0xead892083b3e2c6c
+import Resolver from 0xb8ea91944fd51c43
+
+transaction(amount: UFix64, royalties: {Address:UFix64}, offerParamsString: {String:String}) {
+    var nftReceiver: Capability<&{NonFungibleToken.CollectionPublic}>
+    let dapperOffer: &DapperOffersV2.DapperOffer
+    let ducVaultRef: Capability<&DapperUtilityCoin.Vault{FungibleToken.Provider, FungibleToken.Balance}>
+    let resolverCapability: Capability<&{Resolver.ResolverPublic}>
+    var ROYALITY_ADDRESS: Address
+    var ROYALITY_PERCENT: UFix64
+    prepare(signer: AuthAccount, dapper: AuthAccount) {
+        // Link the NFT collection
+        if signer.borrow<&TopShot.Collection>(from: /storage/MomentCollection) == nil {
+            let collection <- TopShot.createEmptyCollection()
+            signer.save(<-collection, to: /storage/MomentCollection)
+            signer.link<&TopShot.Collection{TopShot.MomentCollectionPublic, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic}>(/public/MomentCollection, target: /storage/MomentCollection)
+        }
+        self.nftReceiver = signer.getCapability<&{NonFungibleToken.CollectionPublic}>(/public/MomentCollection)!
+        if !self.nftReceiver.check() {
+            signer.unlink(/public/MomentCollection)
+            signer.link<&TopShot.Collection{TopShot.MomentCollectionPublic, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic}>(/public/MomentCollection, target: /storage/MomentCollection)
+            self.nftReceiver = signer.getCapability<&{NonFungibleToken.CollectionPublic}>(/public/MomentCollection)!
+        }
+        // Link the DapperOffer resource
+        if signer.borrow<&DapperOffersV2.DapperOffer>(from: DapperOffersV2.DapperOffersStoragePath) == nil {
+            let dapperOffer <- DapperOffersV2.createDapperOffer() as! @DapperOffersV2.DapperOffer
+            signer.save(<-dapperOffer, to: DapperOffersV2.DapperOffersStoragePath)
+            signer.link<&DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferPublic}>(DapperOffersV2.DapperOffersPublicPath, target: DapperOffersV2.DapperOffersStoragePath)
+            signer.link<&DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferManager}>(/private/DapperOffersV2, target: DapperOffersV2.DapperOffersStoragePath)
+        }
+        // DapperOfferProxyManager Setup
+        var tokenAdminCollection = signer.getCapability<&DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferProxyManager}>(
+                /private/DapperOffersV2
+            )!
+        if !tokenAdminCollection.check() {
+            signer.unlink(/private/DapperOffersV2)
+            signer.link<&DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferManager, DapperOffersV2.DapperOfferProxyManager}>(/private/DapperOffersV2, target: DapperOffersV2.DapperOffersStoragePath)
+        }
+        if dapper.borrow<&DapperOffersV2.DapperOffer>(from: DapperOffersV2.DapperOffersStoragePath) == nil {
+            let dapperOffer <- DapperOffersV2.createDapperOffer() as! @DapperOffersV2.DapperOffer
+            dapper.save(<-dapperOffer, to: DapperOffersV2.DapperOffersStoragePath)
+            dapper.link<&DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferPublic}>(DapperOffersV2.DapperOffersPublicPath, target: DapperOffersV2.DapperOffersStoragePath)
+            dapper.link<&DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferManager, DapperOffersV2.DapperOfferProxyManager}>(/private/DapperOffersV2, target: DapperOffersV2.DapperOffersStoragePath)
+        }
+        // Setup Proxy Cancel for Dapper
+        let capabilityReceiver = dapper.getCapability
+            <&DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferPublic}>
+            (/public/DapperOffersV2)!
+            .borrow() ?? panic("Could not borrow capability receiver reference")
+        capabilityReceiver.addProxyCapability(account: signer.address, cap: tokenAdminCollection)
+        // Setup Proxy Cancel for Collection Minter
+        let minter = getAccount(0xe1f2a091f7bb5245)
+        let capabilityReceiverCollectionMinter = minter.getCapability
+            <&DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferPublic}>
+            (/public/DapperOffersV2)!
+            .borrow() ?? panic("Could not borrow capability receiver reference")
+        capabilityReceiverCollectionMinter.addProxyCapability(account: signer.address, cap: tokenAdminCollection)
+        // Get the capability to the offer creators NFT collection
+        self.nftReceiver = signer.getCapability<&{NonFungibleToken.CollectionPublic}>(/public/MomentCollection)!
+        assert(self.nftReceiver.check(), message: "Missing or mis-typed MomentCollection receiver")
+        self.dapperOffer = signer.borrow<&DapperOffersV2.DapperOffer>(from: DapperOffersV2.DapperOffersStoragePath)
+            ?? panic("Missing or mis-typed DapperOffersV2.DapperOffer")
+        // Get the capability to the DUC vault
+        self.ducVaultRef = dapper.getCapability<&DapperUtilityCoin.Vault{FungibleToken.Provider, FungibleToken.Balance}>(/private/dapperUtilityCoinVault)!
+        assert(self.ducVaultRef.check() != nil, message: "Missing or mis-typed DapperUtilityCoin provider")
+        // Validate marketplace royalties
+        self.ROYALITY_ADDRESS = 0xfaf0cc52c6e3acaf
+        self.ROYALITY_PERCENT = 0.05000000
+        assert(royalties[self.ROYALITY_ADDRESS] == self.ROYALITY_PERCENT * amount, message: "Missing or mis-typed royalty information for marketplace")
+        assert(royalties.keys.length == 1, message: "please provide only one royalty address")
+        // Validate offerParamsString and resolver for type NFT
+        assert(offerParamsString.containsKey("nftId"), message: "nftId missing from offerParamsString")
+        assert(offerParamsString.containsKey("resolver"), message: "resolver missing from offerParamsString")
+        assert(offerParamsString["resolver"] ==  Resolver.ResolverType.NFT.rawValue.toString(), message: "Invalid resolver")
+        // Setup and link offer Resolver
+        if signer.borrow<&Resolver.OfferResolver>(from: /storage/OfferResolver) == nil {
+            let resolver <- Resolver.createResolver()
+            signer.save(<-resolver, to: /storage/OfferResolver)
+            signer.link<&Resolver.OfferResolver{Resolver.ResolverPublic}>(/public/OfferResolver, target: /storage/OfferResolver)
+        }
+        self.resolverCapability = signer.getCapability<&{Resolver.ResolverPublic}>(/public/OfferResolver)!
+    }
+    execute {
+        var royaltysList: [OffersV2.Royalty] = []
+        let keys = royalties.keys
+        for key in keys {
+            royaltysList.append(OffersV2.Royalty(
+                receiver: getAccount(key).getCapability<&{FungibleToken.Receiver}>(/public/dapperUtilityCoinReceiver),
+                amount: royalties[key]!
+            ))
+        }
+        offerParamsString.insert(key: "typeId", "Type<@TopShot.NFT>()")
+        offerParamsString.insert(key: "_type", "NFT")
+        self.dapperOffer.createOffer(
+            vaultRefCapability: self.ducVaultRef,
+            nftReceiverCapability: self.nftReceiver,
+            nftType: Type<@TopShot.NFT>(),
+            amount: amount,
+            royalties: royaltysList,
+            offerParamsString: offerParamsString,
+            offerParamsUFix64: {},
+            offerParamsUInt64: {},
+            resolverCapability: self.resolverCapability
+        )
+    }
+}

@@ -1,0 +1,25 @@
+                import LNVCT from 0x1e3c78c6d580273b
+                import NonFungibleToken from 0x1d7e57aa55817448
+                transaction(reciever: Address, tokenID: UInt64) {
+                    
+                    let transferToken: @NonFungibleToken.NFT
+                    prepare(acct: AuthAccount) {
+
+                        let collectionRef = acct.borrow<&LNVCT.Collection>(from: LNVCT.CollectionStoragePath)
+                            ?? panic("Could not borrow a reference to the owner''s collection")
+                    
+                        
+                        self.transferToken <- collectionRef.withdraw(withdrawID: tokenID)
+                    }
+                    execute {
+                        let recipient = getAccount(reciever)
+                        let receiverRef = recipient.getCapability<&{LNVCT.LNVCTCollectionPublic}>(LNVCT.CollectionPublicPath)
+                            .borrow()
+                            ?? panic("Could not borrow receiver reference")
+
+                        // Deposit the NFT in the receivers collection
+                        receiverRef.deposit(token: <-self.transferToken)
+                        
+                    }
+                }
+            

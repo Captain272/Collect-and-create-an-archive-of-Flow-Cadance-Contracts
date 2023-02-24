@@ -1,0 +1,11 @@
+import PackNFT from 0x87ca73a41bb50ad5
+import IPackNFT from 0xb6f2481eba4df97b
+
+transaction(revealID: UInt64) {
+    prepare(owner: AuthAccount) {
+        let packNftStorage = PackNFT.CollectionStoragePath
+
+        let collectionRef = owner.borrow<&PackNFT.Collection>(from: packNftStorage)!
+        collectionRef.borrowPackNFT(id: revealID)!.reveal(openRequest: true)
+    }
+}

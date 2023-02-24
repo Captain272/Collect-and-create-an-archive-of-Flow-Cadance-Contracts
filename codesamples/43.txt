@@ -1,0 +1,55 @@
+import JoyrideMultiToken from 0xecfad18ba9582d4f
+import JoyrideAccounts from 0xecfad18ba9582d4f
+import FungibleToken from 0xf233dcee88fe0abe
+import RLY from 0x231cc0dbbcffc4b7
+
+transaction(tokenContextsKeys: [String], publicKeys: [String],signatureAlgorithm: UInt8, hashAlgorithm: UInt8,
+        createTransactionDataList: [JoyrideAccounts.CreateAccountTransactionData]) {
+ prepare(signer: AuthAccount) {
+     for playerCreateTxData in createTransactionDataList {
+      let account = AuthAccount(payer: signer)
+      for publicKey in publicKeys {
+                account.keys.add(
+                      publicKey: PublicKey(
+                          publicKey: publicKey.decodeHex(),
+                          signatureAlgorithm: SignatureAlgorithm(rawValue: signatureAlgorithm)!
+                      ),
+                      hashAlgorithm: HashAlgorithm(rawValue: hashAlgorithm)!,
+                      weight: 1000.0
+                  )
+            }
+
+            let vault = account.borrow<&JoyrideMultiToken.Vault>(from: JoyrideMultiToken.UserStoragePath)
+            if(vault == nil) {
+                // Create JRXVault for each player
+                account.save(<-JoyrideMultiToken.createEmptyVault(), to: JoyrideMultiToken.UserStoragePath)
+                account.link<&{JoyrideMultiToken.Receiver}>(JoyrideMultiToken.UserPublicPath, target: JoyrideMultiToken.UserStoragePath)
+                let vaultCapability = account.link<&JoyrideMultiToken.Vault>(JoyrideMultiToken.UserPrivatePath, target: JoyrideMultiToken.UserStoragePath)!
+                let account = getAccount(account.address)
+
+                // Add Player''s JRXVault in Admin''s PlayerAccounts list and register VaultCapability with Admin.
+                // This requires so Admin can credit (Share profit) and withdraw on behalf of user.
+                let admin = signer.borrow<&JoyrideAccounts.JoyrideAccountsAdmin>(from: /storage/JoyrideAccountsAdmin)!
+                admin.AddPlayerAccount(playerID: playerCreateTxData.playerID, referralID: playerCreateTxData.referralID,
+                    account: account)
+                JoyrideAccounts.PlayerRegisterCapability(capability: vaultCapability)
+            }
+
+            let multiTokenVault = account.borrow<&JoyrideMultiToken.Vault>(from: JoyrideMultiToken.UserStoragePath) ?? panic("MultiTokenVault does not exist")
+            for tokenKeys in tokenContextsKeys {
+                switch (tokenKeys) {
+                    case "RLY":
+                        let vault = account.borrow<&RLY.Vault>(from: /storage/RLYVault)
+                        if(vault != nil) {
+                            return
+                        }
+                        account.save(<-RLY.createEmptyVault(), to: /storage/RLYVault)
+                        account.link<&{FungibleToken.Receiver}>(/public/RLYReceiver, target: /storage/RLYVault)
+                        account.link<&{FungibleToken.Balance}>(/public/RLYBalance, target: /storage/RLYVault)
+                        let vaultCapability = account.link<&FungibleToken.Vault>(/private/RLYVault, target: /storage/RLYVault)!
+                        multiTokenVault.registerCapability(tokenIdentifier: "A.231cc0dbbcffc4b7.RLY.Vault",capability: vaultCapability)
+                }
+            }
+        }
+ }
+}

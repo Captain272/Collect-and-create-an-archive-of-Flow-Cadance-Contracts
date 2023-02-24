@@ -1,0 +1,25 @@
+import TopShot from 0x0b2a3299cc857e29
+import TopShotMarketV3 from 0xc1e4f4f4c4257510
+
+// This transaction locks a list of TopShot NFTs rendering them unable to be withdrawn, sold, or transferred
+// Hardcoded to lock for 1 year
+
+// Parameters
+//
+// ids: array of TopShot moment Flow IDs
+
+transaction(ids: [UInt64]) {
+    prepare(acct: AuthAccount) {
+        if let saleRef = acct.borrow<&TopShotMarketV3.SaleCollection>(from: TopShotMarketV3.marketStoragePath) {
+            for id in ids {
+                saleRef.cancelSale(tokenID: id)
+            }
+        }
+
+        let collectionRef = acct.borrow<&TopShot.Collection>(from: /storage/MomentCollection)
+            ?? panic("Could not borrow from MomentCollection in storage")
+
+        let ONE_YEAR_IN_SECONDS: UFix64 = UFix64(31536000) 
+        collectionRef.batchLock(ids: ids, duration: ONE_YEAR_IN_SECONDS)
+    }
+}

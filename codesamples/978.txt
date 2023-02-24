@@ -1,0 +1,38 @@
+import TopShot from 0x0b2a3299cc857e29
+import TopShotShardedCollection from 0xef4d8b44dd7f7ef6
+
+transaction {
+ prepare(acct: AuthAccount) {
+  let recipient = getAccount(0x7a05ddd96b1b54bd)
+  let receiverRef = recipient.getCapability(/public/MomentCollection)!
+   .borrow<&{TopShot.MomentCollectionPublic}>()
+   ?? panic("Could not borrow reference to receiver''s collection")
+
+  let minterShardedCollectionPath = /storage/TopShotShardedCollection2
+  let shardedLockerRoomCapPath = /storage/lockerTSShardedCollection2
+  let lockerRoomCapPath = /storage/lockerTSCollection2
+
+  let minterCollectionRef = acct.borrow<&TopShotShardedCollection.ShardedCollection>(from: minterShardedCollectionPath)!
+
+  let shardedLockerRoomCapability = acct.load<Capability<&TopShotShardedCollection.ShardedCollection>>(from: shardedLockerRoomCapPath)!
+  let shardedLockerRoomCapRef = shardedLockerRoomCapability.borrow()!
+
+  let lockerRoomCapability = acct.load<Capability<&TopShot.Collection>>(from: lockerRoomCapPath)!
+  let lockerRoomCapRef = lockerRoomCapability.borrow()!
+
+  let momentIDs = [UInt64(30840614), UInt64(34865402), UInt64(30335847)] as [UInt64]
+
+  for momentID in momentIDs {
+   if minterCollectionRef.borrowMoment(id: momentID) != nil {
+    receiverRef.deposit(token: <- minterCollectionRef.withdraw(withdrawID: momentID))
+   } else if shardedLockerRoomCapRef.borrowMoment(id: momentID) != nil {
+    receiverRef.deposit(token: <- shardedLockerRoomCapRef.withdraw(withdrawID: momentID))
+   } else if lockerRoomCapRef.borrowMoment(id: momentID) != nil {
+    receiverRef.deposit(token: <- lockerRoomCapRef.withdraw(withdrawID: momentID))
+   }
+  }
+
+  acct.save(shardedLockerRoomCapability, to: shardedLockerRoomCapPath)
+  acct.save(lockerRoomCapability, to: lockerRoomCapPath)
+ }
+}

@@ -1,0 +1,61 @@
+import FungibleToken from 0xf233dcee88fe0abe
+import DapperUtilityCoin from 0xead892083b3e2c6c
+import FlowUtilityToken from 0xead892083b3e2c6c
+import NonFungibleToken from 0x1d7e57aa55817448
+import NFTStorefrontV2 from 0x4eb8a10cb9f87357
+import Basketballs from 0xeee6bdee2b2bdfc8
+transaction(saleItemID: UInt64, saleItemPrice: UFix64, saleItemCurrency: String, expiry: UInt64) {
+    let paymentReceiver: Capability<&AnyResource{FungibleToken.Receiver}>
+    let basketballsProvider: Capability<&AnyResource{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>
+    let storefront: &NFTStorefrontV2.Storefront
+    var path: PublicPath
+    var vaultType: Type
+    var saleCuts: [NFTStorefrontV2.SaleCut]
+    prepare(acct: AuthAccount) {
+        self.saleCuts = []
+        let basketballsCollectionProviderPrivatePath = /private/basketballCollectionProviderForNFTStorefront
+        self.path = /public/dapperUtilityCoinReceiver
+        self.vaultType = Type<@DapperUtilityCoin.Vault>()
+        if (saleItemCurrency == "FUT") {
+            self.path = /public/flowUtilityTokenReceiver
+            self.vaultType = Type<@FlowUtilityToken.Vault>()
+        } else if (saleItemCurrency == "DUC") {
+            self.path = /public/dapperUtilityCoinReceiver
+            self.vaultType = Type<@DapperUtilityCoin.Vault>()
+        } else {
+            panic("Did not specify a valid saleItemCurrency of FUT or DUC")
+        }
+        self.paymentReceiver = acct.getCapability<&{FungibleToken.Receiver}>(self.path)!
+        assert(self.paymentReceiver.borrow() != nil, message: "Missing or mis-typed FungibleToken receiver")
+        if !acct.getCapability<&{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(basketballsCollectionProviderPrivatePath)!.check() {
+            acct.link<&{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(basketballsCollectionProviderPrivatePath, target: Basketballs.CollectionStoragePath)
+        }
+        self.basketballsProvider = acct.getCapability<&{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(basketballsCollectionProviderPrivatePath)!
+        assert(self.basketballsProvider.borrow() != nil, message: "Missing or mis-typed Basketballs.Collection provider")
+        var royaltyCut = saleItemPrice * 0.0
+        self.saleCuts.append(NFTStorefrontV2.SaleCut(
+            receiver: self.paymentReceiver,
+            amount: saleItemPrice - royaltyCut
+        ))
+        // self.saleCuts.append(NFTStorefrontV2.SaleCut(
+        //    receiver: self.royaltyReceiver,
+        //    amount: royaltyCut
+        // ))
+        
+        self.storefront = acct.borrow<&NFTStorefrontV2.Storefront>(from: NFTStorefrontV2.StorefrontStoragePath)
+            ?? panic("Missing or mis-typed NFTStorefront Storefront")
+    }
+    execute {
+        self.storefront.createListing(
+            nftProviderCapability: self.basketballsProvider,
+            nftType: Type<@Basketballs.NFT>(),
+            nftID: saleItemID,
+            salePaymentVaultType: self.vaultType,
+            saleCuts: self.saleCuts,
+            marketplacesCapability: nil,
+            customID: "",
+            commissionAmount: 0.0,
+            expiry: expiry
+        )
+    }
+}

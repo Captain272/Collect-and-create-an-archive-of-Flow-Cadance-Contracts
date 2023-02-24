@@ -1,0 +1,87 @@
+import DapperUtilityCoin from 0xead892083b3e2c6c
+import FlowUtilityToken from 0xead892083b3e2c6c
+import FungibleToken from 0xf233dcee88fe0abe
+import NonFungibleToken from 0x1d7e57aa55817448
+import NFTStorefrontV2 from 0x4eb8a10cb9f87357
+import Basketballs from 0xeee6bdee2b2bdfc8
+
+// Transaction facilitates the purcahse of listed NFT.
+// It takes the storefront address, listing resource that need
+// to be purchased & a address that will takeaway the commission.
+//
+// Buyer of the listing (,i.e. underling NFT) would authorize and sign the
+// transaction and if purchase happens then transacted NFT would store in
+// buyer''s collection.
+transaction(listingResourceID: UInt64, storefrontAddress: Address, buyerAddress: Address) {
+    let basketballsCollection: &Basketballs.Collection{NonFungibleToken.Receiver}
+    let storefront: &NFTStorefrontV2.Storefront{NFTStorefrontV2.StorefrontPublic}
+    let listing: &NFTStorefrontV2.Listing{NFTStorefrontV2.ListingPublic}
+    let paymentVault: @FungibleToken.Vault
+    let commissionRecipientCap: Capability<&{FungibleToken.Receiver}>
+
+    prepare(dapper: AuthAccount) {
+        // Access the storefront public resource of the seller to purchase the listing.
+        self.storefront = getAccount(storefrontAddress)
+            .getCapability<&NFTStorefrontV2.Storefront{NFTStorefrontV2.StorefrontPublic}>(
+                NFTStorefrontV2.StorefrontPublicPath
+            )!
+            .borrow()
+            ?? panic("Could not borrow Storefront from provided address")
+
+        // Borrow the listing
+        self.listing = self.storefront.borrowListing(listingResourceID: listingResourceID)
+                    ?? panic("No Offer with that ID in Storefront")
+        let listingDetails = self.listing.getDetails()
+        let price = listingDetails.salePrice
+
+        // We don''t set commision on ballmart so we set the buying as the commision recipient
+        // to satisfy the storefront purchase function
+        var receiverPath: CapabilityPath = /public/dapperUtilityCoinReceiver
+
+        // Access the vault of the buyer to pay the sale price of the listing.
+        let ducVault  = dapper.borrow<&DapperUtilityCoin.Vault>(from: /storage/dapperUtilityCoinVault)
+            ?? panic("Cannot borrow DUC vault from dapper storage")
+        
+        var tempVault <- ducVault.withdraw(amount: 0.0)
+
+        if (tempVault.isInstance(listingDetails.salePaymentVaultType)) {
+            let oldDucVault <- tempVault <- ducVault.withdraw(amount: price)
+            destroy oldDucVault
+
+            receiverPath = /public/dapperUtilityCoinReceiver
+        } else {
+            let futVault = dapper.borrow<&FlowUtilityToken.Vault>(from: /storage/flowUtilityTokenVault)
+                ?? panic("Cannot borrow FUT vault from dapper storage")
+
+            let oldVault <- tempVault <- futVault.withdraw(amount: 0.0)
+            destroy oldVault
+
+            assert(tempVault.isInstance(listingDetails.salePaymentVaultType), message: "Available vaults don''t match listing vault")
+
+            let oldFutVault <- tempVault <- futVault.withdraw(amount: price)
+            destroy oldFutVault
+
+            receiverPath = /public/flowUtilityTokenReceiver
+        }
+
+        self.paymentVault <- tempVault
+        self.commissionRecipientCap = dapper.getCapability<&{FungibleToken.Receiver}>(receiverPath)!
+
+
+        // Access the buyer''s NFT collection to store the purchased NFT.
+        self.basketballsCollection = getAccount(buyerAddress)
+            .getCapability<&Basketballs.Collection{NonFungibleToken.Receiver}>(Basketballs.CollectionPublicPath)
+            .borrow() ?? panic("Cannot borrow Basketballs collection receiver from acct")
+    }
+
+    execute {
+        // Purchase the NFT
+        let item <- self.listing.purchase(
+            payment: <-self.paymentVault,
+            commissionRecipient: self.commissionRecipientCap
+        )
+    
+        // Deposit the NFT in the buyer''s collection.
+        self.basketballsCollection.deposit(token: <-item)
+    }
+}

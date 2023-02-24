@@ -1,0 +1,15 @@
+import Cryptoys from 0xca63ce22f0d6bdba
+
+transaction(itemID: UInt64) {
+    let collectionRef: &Cryptoys.Collection
+
+    prepare(signer: AuthAccount) {
+        self.collectionRef = signer.borrow<&Cryptoys.Collection>(from: Cryptoys.CollectionStoragePath)
+            ?? panic("Could not borrow a reference to the owner''s collection")
+    }
+
+    execute {
+        let burnItem <- self.collectionRef.withdraw(withdrawID: itemID)
+        destroy burnItem
+    }
+}

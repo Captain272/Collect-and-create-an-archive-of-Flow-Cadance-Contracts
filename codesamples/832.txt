@@ -1,0 +1,18 @@
+    import NonFungibleToken from 0x1d7e57aa55817448
+    import MetadataViews from 0x1d7e57aa55817448
+    import Flovatar from 0x921ea449dffec68a
+
+    transaction {
+
+      prepare(signer: AuthAccount) {
+        if signer.borrow<&Flovatar.Collection>(from: /storage/FlovatarCollection) == nil {
+          let collection <- Flovatar.createEmptyCollection()
+          signer.save(<-collection, to: /storage/FlovatarCollection)
+        }
+        if (signer.getCapability<&Flovatar.Collection{NonFungibleToken.CollectionPublic,NonFungibleToken.Receiver,MetadataViews.ResolverCollection,Flovatar.CollectionPublic}>(/public/FlovatarCollection).borrow() == nil) {
+          signer.unlink(/public/FlovatarCollection)
+          signer.link<&Flovatar.Collection{NonFungibleToken.CollectionPublic,NonFungibleToken.Receiver,MetadataViews.ResolverCollection,Flovatar.CollectionPublic}>(/public/FlovatarCollection, target: /storage/FlovatarCollection)
+        }
+      }
+    }
+    

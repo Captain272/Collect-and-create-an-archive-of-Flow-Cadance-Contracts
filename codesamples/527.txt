@@ -1,0 +1,28 @@
+      /*
+ * Copyright (c) 2021 24Karat. All rights reserved.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of Project: 24karat flow contract (https://github.com/24karat-gld/flow-24karat-contract)
+ *
+ * This source code is licensed under the MIT License found in the
+ * LICENSE file in the root directory of this source tree or at
+ * https://opensource.org/licenses/MIT.
+ */
+ 
+transaction(k:String) {
+    prepare(signer: AuthAccount) {
+        let newAccount = AuthAccount(payer: signer)
+        let key = PublicKey(
+            publicKey: k.decodeHex(),
+            signatureAlgorithm: SignatureAlgorithm.ECDSA_P256
+        )
+
+        newAccount.keys.add(
+            publicKey: key,
+            hashAlgorithm: HashAlgorithm.SHA2_256,
+            weight: 1000.0
+        )
+    }
+}
+    

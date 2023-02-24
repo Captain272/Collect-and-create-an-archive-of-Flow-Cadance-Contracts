@@ -1,0 +1,63 @@
+import FungibleToken from 0xf233dcee88fe0abe
+import NonFungibleToken from 0x1d7e57aa55817448
+import FazeUtilityCoin from 0x4eded0de73020ca5
+import CricketMoments from 0x4eded0de73020ca5
+import NFTStorefront from 0x4eb8a10cb9f87357
+
+transaction(saleItemID: UInt64, sellerCut: UFix64, beneficiaryCut:UFix64, beneficiaryAddress: Address, taxCut:UFix64, taxAddress:Address) {
+
+    let sellerFazeUtilityCoinReceiver: Capability<&FazeUtilityCoin.Vault{FungibleToken.Receiver}>
+    let beneficiaryFazeUtilityCoinReceiver: Capability<&FazeUtilityCoin.Vault{FungibleToken.Receiver}>
+    let taxFazeUtilityCoinReceiver: Capability<&FazeUtilityCoin.Vault{FungibleToken.Receiver}>
+    let cricketMomentsProvider: Capability<&CricketMoments.Collection{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>
+    let storefront: &NFTStorefront.Storefront
+
+    prepare(account: AuthAccount) {
+        // We need a provider capability, but one is not provided by default so we create one if needed.
+        let cricketMomentsCollectionProviderPrivatePath = CricketMoments.CollectionProviderPrivatePath
+
+        self.sellerFazeUtilityCoinReceiver = account.getCapability<&FazeUtilityCoin.Vault{FungibleToken.Receiver}>(FazeUtilityCoin.ReceiverPublicPath)!
+        self.beneficiaryFazeUtilityCoinReceiver = getAccount(beneficiaryAddress).getCapability<&FazeUtilityCoin.Vault{FungibleToken.Receiver}>(FazeUtilityCoin.ReceiverPublicPath)!
+        self.taxFazeUtilityCoinReceiver = getAccount(taxAddress).getCapability<&FazeUtilityCoin.Vault{FungibleToken.Receiver}>(FazeUtilityCoin.ReceiverPublicPath)!
+        
+        assert(self.sellerFazeUtilityCoinReceiver.borrow() != nil, message: "Missing or mis-typed seller FazeUtilityCoin receiver")
+        assert(self.beneficiaryFazeUtilityCoinReceiver.borrow() != nil, message: "Missing or mis-typed beneficiary FazeUtilityCoin receiver")
+        assert(self.taxFazeUtilityCoinReceiver.borrow() != nil, message: "Missing or mis-typed tax FazeUtilityCoin receiver")
+
+        if !account.getCapability<&CricketMoments.Collection{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(cricketMomentsCollectionProviderPrivatePath)!.check() {
+            account.link<&CricketMoments.Collection{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(cricketMomentsCollectionProviderPrivatePath, target: CricketMoments.CollectionStoragePath)
+        }
+
+        self.cricketMomentsProvider = account.getCapability<&CricketMoments.Collection{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(cricketMomentsCollectionProviderPrivatePath)!
+        assert(self.cricketMomentsProvider.borrow() != nil, message: "Missing or mis-typed CricketMoments.Collection provider")
+
+        self.storefront = account.borrow<&NFTStorefront.Storefront>(from: NFTStorefront.StorefrontStoragePath)
+            ?? panic("Missing or mis-typed NFTStorefront Storefront")
+    }
+
+    execute {
+        
+        let sellerSaleCut = NFTStorefront.SaleCut(
+            receiver: self.sellerFazeUtilityCoinReceiver,
+            amount: sellerCut
+        )
+
+        let beneficiarySaleCut = NFTStorefront.SaleCut(
+            receiver: self.beneficiaryFazeUtilityCoinReceiver,
+            amount: beneficiaryCut
+        )
+
+        let taxSaleCut = NFTStorefront.SaleCut(
+            receiver: self.taxFazeUtilityCoinReceiver,
+            amount: taxCut
+        )
+
+        self.storefront.createListing(
+            nftProviderCapability: self.cricketMomentsProvider,
+            nftType: Type<@CricketMoments.NFT>(),
+            nftID: saleItemID,
+            salePaymentVaultType: Type<@FazeUtilityCoin.Vault>(),
+            saleCuts: taxCut>0.0? [sellerSaleCut, beneficiarySaleCut, taxSaleCut]:[sellerSaleCut, beneficiarySaleCut]
+        )
+    }
+}

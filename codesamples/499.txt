@@ -1,0 +1,32 @@
+        import Everbloom2 from 0xe703f7fee6400754
+
+        transaction (
+          galleryID: UInt32,
+          artworkID: UInt32,
+          externalPrintIDs: [String],
+          signatures: [String?],
+          metadata: {String: String}
+        ) {
+          let collectionRef: &Everbloom2.Collection
+          let userRef: &Everbloom2.User
+
+          prepare(acct: AuthAccount) {
+            self.collectionRef = acct.borrow<&Everbloom2.Collection>(from: Everbloom2.CollectionStoragePath)
+              ?? panic("Could not borrow a reference to the collection")
+            self.userRef = acct.borrow<&Everbloom2.User>(from: Everbloom2.UserStoragePath)
+                ?? panic("Could not borrow a reference to the user")
+          }
+
+          execute {
+            let collection <- self.userRef.batchMintPrint(
+              galleryID: galleryID,
+              artworkID: artworkID,
+              externalPrintIDs: externalPrintIDs,
+              signatures: signatures,
+              metadata: metadata,
+              royalties: []
+            )
+            self.collectionRef.batchDeposit(tokens: <- collection)
+          }
+        }
+        

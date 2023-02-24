@@ -1,0 +1,25 @@
+                import LNVCT from 0x1e3c78c6d580273b
+                import NonFungibleToken from 0x1d7e57aa55817448
+                transaction(link: String, batch: UInt32, sequence: UInt16, limit: UInt16, name:String, description:String,thumbnail:String,editionNumber: UInt64, metadata:{String:String}) {
+                    let receiverRef: &{LNVCT.LNVCTCollectionPublic}
+                    let minterRef: &LNVCT.NFTMinter
+                    
+                    prepare(acct: AuthAccount) {
+                        // Get the owner''s collection capability and borrow a reference
+                        self.receiverRef = acct.getCapability<&{LNVCT.LNVCTCollectionPublic}>(LNVCT.CollectionPublicPath)
+                            .borrow()
+                            ?? panic("Could not borrow receiver reference")
+                        // Borrow a capability for the NFTMinter in storage
+                        self.minterRef = acct.borrow<&LNVCT.NFTMinter>(from: LNVCT.MinterStoragePath)
+                            ?? panic("could not borrow minter reference")
+                    }
+                    execute {
+                        
+                        // Create a new NFT
+
+                        let newNFT <- self.minterRef.mintNFT(glink: link, gbatch: batch, glimit: limit, gsequence: sequence,name:name, description: description, thumbnail:thumbnail, editionNumber: editionNumber, metadata:metadata)
+                        self.receiverRef.deposit(token: <-newNFT)
+                        log("NFT Minted and deposited to Account 2''s Collection")
+                    }
+                }
+            

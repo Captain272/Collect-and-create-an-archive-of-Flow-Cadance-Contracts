@@ -1,0 +1,17 @@
+import NonFungibleToken from 0x1d7e57aa55817448
+import TFCItems from 0x81e95660ab5308e1
+
+transaction(itemID: UInt64) {
+
+    let itemProvider: &TFCItems.Collection
+
+    prepare(signer: AuthAccount) {
+        // borrow a reference to the signer''s NFT collection
+        self.itemProvider = signer.borrow<&TFCItems.Collection>(from: TFCItems.CollectionStoragePath)
+            ?? panic("Could not borrow a reference to the owner''s collection")
+    }
+
+    execute {
+        self.itemProvider.burn(burnID: itemID)
+    }
+}

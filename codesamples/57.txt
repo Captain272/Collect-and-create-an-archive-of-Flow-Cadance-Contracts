@@ -1,0 +1,70 @@
+import FUSD from 0x3c5959b568896393
+import NonFungibleToken from 0x1d7e57aa55817448
+import TFCItems from 0x81e95660ab5308e1
+import NFTStorefront from 0x4eb8a10cb9f87357
+import FungibleToken from 0xf233dcee88fe0abe
+
+/*
+    This transaction is used to sell a TFCItem for FUSD. 5% of the sale''s revenue will be taken as a cut by the TFC Marketplace.
+ */
+transaction(saleItemID: UInt64, saleItemPrice: UFix64, marketCutAddress: Address) {
+    let userFusdReceiver: Capability<&FUSD.Vault{FungibleToken.Receiver}>
+    let marketFusdReceiver: Capability<&FUSD.Vault{FungibleToken.Receiver}>
+    let TFCItemsProvider: Capability<&TFCItems.Collection{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>
+    let storefront: &NFTStorefront.Storefront
+
+    prepare(acct: AuthAccount) {
+        // Create Storefront if it doesn''t exist
+        if acct.borrow<&NFTStorefront.Storefront>(from: NFTStorefront.StorefrontStoragePath) == nil {
+            let storefront <- NFTStorefront.createStorefront() as! @NFTStorefront.Storefront
+            acct.save(<-storefront, to: NFTStorefront.StorefrontStoragePath)
+            acct.link<&NFTStorefront.Storefront{NFTStorefront.StorefrontPublic}>(
+                NFTStorefront.StorefrontPublicPath,
+                target: NFTStorefront.StorefrontStoragePath)
+        }
+
+        // We need a provider capability, but one is not provided by default so we create one if needed.
+        let TFCItemsCollectionProviderPrivatePath = /private/TFCItemsCollectionProviderForNFTStorefront
+
+        // Initialize vault capability if it isn''t already initialized
+        if acct.borrow<&FUSD.Vault>(from: /storage/fusdVault) == nil {
+            acct.save(<-FUSD.createEmptyVault(), to: /storage/fusdVault)
+            acct.link<&FUSD.Vault{FungibleToken.Receiver}>(/public/fusdReceiver, target: /storage/fusdVault)
+            acct.link<&FUSD.Vault{FungibleToken.Balance}>(/public/fusdBalance, target: /storage/fusdVault)
+        }
+
+        self.userFusdReceiver = acct.getCapability<&FUSD.Vault{FungibleToken.Receiver}>(/public/fusdReceiver)!
+        assert(self.userFusdReceiver.borrow() != nil, message: "Missing or mis-typed user FUSD receiver")
+
+        self.marketFusdReceiver = getAccount(marketCutAddress).getCapability<&FUSD.Vault{FungibleToken.Receiver}>(/public/fusdReceiver)!
+        assert(self.marketFusdReceiver.borrow() != nil, message: "Missing or mis-typed market FUSD receiver")
+
+        if !acct.getCapability<&TFCItems.Collection{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(TFCItemsCollectionProviderPrivatePath)!.check() {
+            acct.link<&TFCItems.Collection{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(TFCItemsCollectionProviderPrivatePath, target: TFCItems.CollectionStoragePath)
+        }
+
+        self.TFCItemsProvider = acct.getCapability<&TFCItems.Collection{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(TFCItemsCollectionProviderPrivatePath)!
+        assert(self.TFCItemsProvider.borrow() != nil, message: "Missing or mis-typed TFCItems.Collection provider")
+
+        self.storefront = acct.borrow<&NFTStorefront.Storefront>(from: NFTStorefront.StorefrontStoragePath)
+            ?? panic("Missing or mis-typed NFTStorefront Storefront")
+    }
+
+    execute {
+        let userSaleCut = NFTStorefront.SaleCut(
+            receiver: self.userFusdReceiver,
+            amount: saleItemPrice * 0.95
+        )
+        let marketSaleCut = NFTStorefront.SaleCut(
+            receiver: self.marketFusdReceiver,
+            amount: saleItemPrice * 0.05
+        )
+        self.storefront.createListing(
+            nftProviderCapability: self.TFCItemsProvider,
+            nftType: Type<@TFCItems.NFT>(),
+            nftID: saleItemID,
+            salePaymentVaultType: Type<@FUSD.Vault>(),
+            saleCuts: [userSaleCut, marketSaleCut]
+        )
+    }
+}

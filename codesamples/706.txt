@@ -1,0 +1,45 @@
+import JoyrideAccounts from 0xecfad18ba9582d4f
+import FungibleToken from 0xf233dcee88fe0abe
+import JoyrideMultiToken from 0xecfad18ba9582d4f
+import RLY from 0x231cc0dbbcffc4b7
+
+transaction(tokenContextKeys: [String], isAdmin: Bool, playerID: String, referralID: String) {
+    prepare(account: AuthAccount, adminSigner: AuthAccount) {
+        let vault = account.borrow<&JoyrideMultiToken.Vault>(from: JoyrideMultiToken.UserStoragePath)
+        if(vault == nil) {
+            // Create JRXVault for each player
+            account.save(<-JoyrideMultiToken.createEmptyVault(), to: JoyrideMultiToken.UserStoragePath)
+            account.link<&{FungibleToken.Receiver, FungibleToken.Balance}>(JoyrideMultiToken.UserPublicPath, target: JoyrideMultiToken.UserStoragePath)
+            let vaultCapability = account.link<&JoyrideMultiToken.Vault>(JoyrideMultiToken.UserPrivatePath, target: JoyrideMultiToken.UserStoragePath)!
+            let publicAccount = getAccount(account.address)
+
+            // Add Player''s JRXVault in Admin''s PlayerAccounts list and register VaultCapability with Admin.
+            // This requires so Admin can credit (Share profit) and withdraw on behalf of user.
+            let admin = adminSigner.borrow<&JoyrideAccounts.JoyrideAccountsAdmin>(from: /storage/JoyrideAccountsAdmin)!
+            admin.AddPlayerAccount(playerID: playerID, referralID: referralID,
+                account: publicAccount)
+            JoyrideAccounts.PlayerRegisterCapability(capability: vaultCapability)
+        }
+
+        var multiTokenVault = account.borrow<&JoyrideMultiToken.Vault>(from: JoyrideMultiToken.UserStoragePath) ?? panic("MultiTokenVault does not exist")
+        for tokenContext in tokenContextKeys {
+            switch (tokenContext) {
+                case "RLY":
+                    let vault = account.borrow<&RLY.Vault>(from: /storage/RLYVault)
+                    if(vault != nil) {
+                        if (!multiTokenVault.doesCapabilityExists(tokenIdentifier: "A.231cc0dbbcffc4b7.RLY.Vault")) {
+                            let vaultCapability = account.link<&FungibleToken.Vault>(/private/RLYVault, target: /storage/RLYVault)!
+                            multiTokenVault.registerCapability(tokenIdentifier: "A.231cc0dbbcffc4b7.RLY.Vault",capability: vaultCapability)
+                        }
+                        continue
+                    }
+                    account.save(<-RLY.createEmptyVault(), to: /storage/RLYVault)
+                    account.link<&{FungibleToken.Receiver}>(/public/RLYReceiver, target: /storage/RLYVault)
+                    account.link<&{FungibleToken.Balance}>(/public/RLYBalance, target: /storage/RLYVault)
+                    let vaultCapability = account.link<&FungibleToken.Vault>(/private/RLYVault, target: /storage/RLYVault)!
+                    multiTokenVault.registerCapability(tokenIdentifier: "A.231cc0dbbcffc4b7.RLY.Vault",capability: vaultCapability)
+            }
+        }
+
+    }
+}

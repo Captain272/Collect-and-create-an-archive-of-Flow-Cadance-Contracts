@@ -1,0 +1,335 @@
+import FungibleToken from 0xf233dcee88fe0abe
+import NonFungibleToken from 0x1d7e57aa55817448
+import KaratNFT from 0x82ed1b9cba5bb1b3
+import KaratNFTMarket from 0x82ed1b9cba5bb1b3
+import Karat from 0x82ed1b9cba5bb1b3
+import Karatv2 from 0x82ed1b9cba5bb1b3
+import Sorachi from 0x82ed1b9cba5bb1b3
+import Story from 0x82ed1b9cba5bb1b3
+import MRFRIENDLY from 0x82ed1b9cba5bb1b3
+import BYPRODUCT from 0x82ed1b9cba5bb1b3
+import ACCO_SOLEIL from 0x82ed1b9cba5bb1b3
+import PEYE from 0x82ed1b9cba5bb1b3
+import TOM from 0x82ed1b9cba5bb1b3
+import JOSHIN from 0x82ed1b9cba5bb1b3
+import IAT from 0x82ed1b9cba5bb1b3
+import WE_PIN from 0x82ed1b9cba5bb1b3
+import TNP from 0x82ed1b9cba5bb1b3
+import MARK from 0x82ed1b9cba5bb1b3
+
+
+pub fun hasKarat(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&Karat.Vault{FungibleToken.Receiver}>(Karat.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&Karat.Vault{FungibleToken.Balance}>(Karat.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasKaratv2(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&Karatv2.Vault{FungibleToken.Receiver}>(Karatv2.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&Karatv2.Vault{FungibleToken.Balance}>(Karatv2.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasSorachi(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&Sorachi.Vault{FungibleToken.Receiver}>(Sorachi.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&Sorachi.Vault{FungibleToken.Balance}>(Sorachi.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasStory(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&Story.Vault{FungibleToken.Receiver}>(Story.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&Story.Vault{FungibleToken.Balance}>(Story.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasMRFRIENDLY(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&MRFRIENDLY.Vault{FungibleToken.Receiver}>(MRFRIENDLY.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&MRFRIENDLY.Vault{FungibleToken.Balance}>(MRFRIENDLY.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasBYPRODUCT(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&BYPRODUCT.Vault{FungibleToken.Receiver}>(BYPRODUCT.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&BYPRODUCT.Vault{FungibleToken.Balance}>(BYPRODUCT.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasACCO_SOLEIL(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&ACCO_SOLEIL.Vault{FungibleToken.Receiver}>(ACCO_SOLEIL.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&ACCO_SOLEIL.Vault{FungibleToken.Balance}>(ACCO_SOLEIL.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasPEYE(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&PEYE.Vault{FungibleToken.Receiver}>(PEYE.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&PEYE.Vault{FungibleToken.Balance}>(PEYE.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasTOM(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&TOM.Vault{FungibleToken.Receiver}>(TOM.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&TOM.Vault{FungibleToken.Balance}>(TOM.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasJOSHIN(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&JOSHIN.Vault{FungibleToken.Receiver}>(JOSHIN.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&JOSHIN.Vault{FungibleToken.Balance}>(JOSHIN.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasIAT(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&IAT.Vault{FungibleToken.Receiver}>(IAT.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&IAT.Vault{FungibleToken.Balance}>(IAT.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasWE_PIN(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&WE_PIN.Vault{FungibleToken.Receiver}>(WE_PIN.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&WE_PIN.Vault{FungibleToken.Balance}>(WE_PIN.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasTNP(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&TNP.Vault{FungibleToken.Receiver}>(TNP.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&TNP.Vault{FungibleToken.Balance}>(TNP.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasMARK(_ address: Address): Bool {
+  let receiver = getAccount(address)
+    .getCapability<&MARK.Vault{FungibleToken.Receiver}>(MARK.ReceiverPublicPath)
+    .check()
+  let balance = getAccount(address)
+    .getCapability<&MARK.Vault{FungibleToken.Balance}>(MARK.BalancePublicPath)
+    .check()
+  return receiver && balance
+}
+
+pub fun hasItems(_ address: Address): Bool {
+  return getAccount(address)
+    .getCapability<&KaratNFT.Collection{NonFungibleToken.CollectionPublic, KaratNFT.KaratNFTCollectionPublic}>(KaratNFT.CollectionPublicPath)
+    .check()
+}
+pub fun hasMarket(_ address: Address): Bool {
+  return getAccount(address)
+    .getCapability<&KaratNFTMarket.Collection{KaratNFTMarket.CollectionPublic}>(KaratNFTMarket.CollectionPublicPath)
+    .check()
+}
+transaction {
+  prepare(acct: AuthAccount) {
+    
+    if !hasKarat(acct.address) {
+      if acct.borrow<&Karat.Vault>(from: Karat.VaultStoragePath) == nil {
+        acct.save(<-Karat.createEmptyVault(), to: Karat.VaultStoragePath)
+      }
+      acct.unlink(Karat.ReceiverPublicPath)
+      acct.unlink(Karat.BalancePublicPath)
+      acct.link<&Karat.Vault{FungibleToken.Receiver}>(Karat.ReceiverPublicPath, target: Karat.VaultStoragePath)
+      acct.link<&Karat.Vault{FungibleToken.Balance}>(Karat.BalancePublicPath, target: Karat.VaultStoragePath)
+    }
+
+    if !hasKaratv2(acct.address) {
+      if acct.borrow<&Karatv2.Vault>(from: Karatv2.VaultStoragePath) == nil {
+        acct.save(<-Karatv2.createEmptyVault(), to: Karatv2.VaultStoragePath)
+      }
+      acct.unlink(Karatv2.ReceiverPublicPath)
+      acct.unlink(Karatv2.BalancePublicPath)
+      acct.link<&Karatv2.Vault{FungibleToken.Receiver}>(Karatv2.ReceiverPublicPath, target: Karatv2.VaultStoragePath)
+      acct.link<&Karatv2.Vault{FungibleToken.Balance}>(Karatv2.BalancePublicPath, target: Karatv2.VaultStoragePath)
+    }
+
+    if !hasSorachi(acct.address) {
+      if acct.borrow<&Sorachi.Vault>(from: Sorachi.VaultStoragePath) == nil {
+        acct.save(<-Sorachi.createEmptyVault(), to: Sorachi.VaultStoragePath)
+      }
+      acct.unlink(Sorachi.ReceiverPublicPath)
+      acct.unlink(Sorachi.BalancePublicPath)
+      acct.link<&Sorachi.Vault{FungibleToken.Receiver}>(Sorachi.ReceiverPublicPath, target: Sorachi.VaultStoragePath)
+      acct.link<&Sorachi.Vault{FungibleToken.Balance}>(Sorachi.BalancePublicPath, target: Sorachi.VaultStoragePath)
+    }
+
+    if !hasStory(acct.address) {
+      if acct.borrow<&Story.Vault>(from: Story.VaultStoragePath) == nil {
+        acct.save(<-Story.createEmptyVault(), to: Story.VaultStoragePath)
+      }
+      acct.unlink(Story.ReceiverPublicPath)
+      acct.unlink(Story.BalancePublicPath)
+      acct.link<&Story.Vault{FungibleToken.Receiver}>(Story.ReceiverPublicPath, target: Story.VaultStoragePath)
+      acct.link<&Story.Vault{FungibleToken.Balance}>(Story.BalancePublicPath, target: Story.VaultStoragePath)
+    }
+
+    if !hasMRFRIENDLY(acct.address) {
+      if acct.borrow<&MRFRIENDLY.Vault>(from: MRFRIENDLY.VaultStoragePath) == nil {
+        acct.save(<-MRFRIENDLY.createEmptyVault(), to: MRFRIENDLY.VaultStoragePath)
+      }
+      acct.unlink(MRFRIENDLY.ReceiverPublicPath)
+      acct.unlink(MRFRIENDLY.BalancePublicPath)
+      acct.link<&MRFRIENDLY.Vault{FungibleToken.Receiver}>(MRFRIENDLY.ReceiverPublicPath, target: MRFRIENDLY.VaultStoragePath)
+      acct.link<&MRFRIENDLY.Vault{FungibleToken.Balance}>(MRFRIENDLY.BalancePublicPath, target: MRFRIENDLY.VaultStoragePath)
+    }
+
+    if !hasBYPRODUCT(acct.address) {
+      if acct.borrow<&BYPRODUCT.Vault>(from: BYPRODUCT.VaultStoragePath) == nil {
+        acct.save(<-BYPRODUCT.createEmptyVault(), to: BYPRODUCT.VaultStoragePath)
+      }
+      acct.unlink(BYPRODUCT.ReceiverPublicPath)
+      acct.unlink(BYPRODUCT.BalancePublicPath)
+      acct.link<&BYPRODUCT.Vault{FungibleToken.Receiver}>(BYPRODUCT.ReceiverPublicPath, target: BYPRODUCT.VaultStoragePath)
+      acct.link<&BYPRODUCT.Vault{FungibleToken.Balance}>(BYPRODUCT.BalancePublicPath, target: BYPRODUCT.VaultStoragePath)
+    }
+
+    if !hasACCO_SOLEIL(acct.address) {
+      if acct.borrow<&ACCO_SOLEIL.Vault>(from: ACCO_SOLEIL.VaultStoragePath) == nil {
+        acct.save(<-ACCO_SOLEIL.createEmptyVault(), to: ACCO_SOLEIL.VaultStoragePath)
+      }
+      acct.unlink(ACCO_SOLEIL.ReceiverPublicPath)
+      acct.unlink(ACCO_SOLEIL.BalancePublicPath)
+      acct.link<&ACCO_SOLEIL.Vault{FungibleToken.Receiver}>(ACCO_SOLEIL.ReceiverPublicPath, target: ACCO_SOLEIL.VaultStoragePath)
+      acct.link<&ACCO_SOLEIL.Vault{FungibleToken.Balance}>(ACCO_SOLEIL.BalancePublicPath, target: ACCO_SOLEIL.VaultStoragePath)
+    }
+
+    if !hasPEYE(acct.address) {
+      if acct.borrow<&PEYE.Vault>(from: PEYE.VaultStoragePath) == nil {
+        acct.save(<-PEYE.createEmptyVault(), to: PEYE.VaultStoragePath)
+      }
+      acct.unlink(PEYE.ReceiverPublicPath)
+      acct.unlink(PEYE.BalancePublicPath)
+      acct.link<&PEYE.Vault{FungibleToken.Receiver}>(PEYE.ReceiverPublicPath, target: PEYE.VaultStoragePath)
+      acct.link<&PEYE.Vault{FungibleToken.Balance}>(PEYE.BalancePublicPath, target: PEYE.VaultStoragePath)
+    }
+
+    if !hasTOM(acct.address) {
+      if acct.borrow<&TOM.Vault>(from: TOM.VaultStoragePath) == nil {
+        acct.save(<-TOM.createEmptyVault(), to: TOM.VaultStoragePath)
+      }
+      acct.unlink(TOM.ReceiverPublicPath)
+      acct.unlink(TOM.BalancePublicPath)
+      acct.link<&TOM.Vault{FungibleToken.Receiver}>(TOM.ReceiverPublicPath, target: TOM.VaultStoragePath)
+      acct.link<&TOM.Vault{FungibleToken.Balance}>(TOM.BalancePublicPath, target: TOM.VaultStoragePath)
+    }
+
+    if !hasJOSHIN(acct.address) {
+      if acct.borrow<&JOSHIN.Vault>(from: JOSHIN.VaultStoragePath) == nil {
+        acct.save(<-JOSHIN.createEmptyVault(), to: JOSHIN.VaultStoragePath)
+      }
+      acct.unlink(JOSHIN.ReceiverPublicPath)
+      acct.unlink(JOSHIN.BalancePublicPath)
+      acct.link<&JOSHIN.Vault{FungibleToken.Receiver}>(JOSHIN.ReceiverPublicPath, target: JOSHIN.VaultStoragePath)
+      acct.link<&JOSHIN.Vault{FungibleToken.Balance}>(JOSHIN.BalancePublicPath, target: JOSHIN.VaultStoragePath)
+    }
+
+    if !hasIAT(acct.address) {
+      if acct.borrow<&IAT.Vault>(from: IAT.VaultStoragePath) == nil {
+        acct.save(<-IAT.createEmptyVault(), to: IAT.VaultStoragePath)
+      }
+      acct.unlink(IAT.ReceiverPublicPath)
+      acct.unlink(IAT.BalancePublicPath)
+      acct.link<&IAT.Vault{FungibleToken.Receiver}>(IAT.ReceiverPublicPath, target: IAT.VaultStoragePath)
+      acct.link<&IAT.Vault{FungibleToken.Balance}>(IAT.BalancePublicPath, target: IAT.VaultStoragePath)
+    }
+
+    if !hasWE_PIN(acct.address) {
+      if acct.borrow<&WE_PIN.Vault>(from: WE_PIN.VaultStoragePath) == nil {
+        acct.save(<-WE_PIN.createEmptyVault(), to: WE_PIN.VaultStoragePath)
+      }
+      acct.unlink(WE_PIN.ReceiverPublicPath)
+      acct.unlink(WE_PIN.BalancePublicPath)
+      acct.link<&WE_PIN.Vault{FungibleToken.Receiver}>(WE_PIN.ReceiverPublicPath, target: WE_PIN.VaultStoragePath)
+      acct.link<&WE_PIN.Vault{FungibleToken.Balance}>(WE_PIN.BalancePublicPath, target: WE_PIN.VaultStoragePath)
+    }
+
+    if !hasTNP(acct.address) {
+      if acct.borrow<&TNP.Vault>(from: TNP.VaultStoragePath) == nil {
+        acct.save(<-TNP.createEmptyVault(), to: TNP.VaultStoragePath)
+      }
+      acct.unlink(TNP.ReceiverPublicPath)
+      acct.unlink(TNP.BalancePublicPath)
+      acct.link<&TNP.Vault{FungibleToken.Receiver}>(TNP.ReceiverPublicPath, target: TNP.VaultStoragePath)
+      acct.link<&TNP.Vault{FungibleToken.Balance}>(TNP.BalancePublicPath, target: TNP.VaultStoragePath)
+    }
+
+    if !hasMARK(acct.address) {
+      if acct.borrow<&MARK.Vault>(from: MARK.VaultStoragePath) == nil {
+        acct.save(<-MARK.createEmptyVault(), to: MARK.VaultStoragePath)
+      }
+      acct.unlink(MARK.ReceiverPublicPath)
+      acct.unlink(MARK.BalancePublicPath)
+      acct.link<&MARK.Vault{FungibleToken.Receiver}>(MARK.ReceiverPublicPath, target: MARK.VaultStoragePath)
+      acct.link<&MARK.Vault{FungibleToken.Balance}>(MARK.BalancePublicPath, target: MARK.VaultStoragePath)
+    }
+
+    if !hasItems(acct.address) {
+      if acct.borrow<&KaratNFT.Collection>(from: KaratNFT.CollectionStoragePath) == nil {
+        // if let oldToken <- acct.load<@NonFungibleToken.Collection>(from: KaratNFT.CollectionStoragePath) {
+        //   destroy oldToken
+        // }
+        acct.save(<-KaratNFT.createEmptyCollection(), to: KaratNFT.CollectionStoragePath)
+      }
+      acct.unlink(KaratNFT.CollectionPublicPath)
+      acct.link<&KaratNFT.Collection{NonFungibleToken.CollectionPublic, KaratNFT.KaratNFTCollectionPublic}>(KaratNFT.CollectionPublicPath, target: KaratNFT.CollectionStoragePath)
+    }
+    if !hasMarket(acct.address) {
+      if acct.borrow<&KaratNFTMarket.Collection>(from: KaratNFTMarket.CollectionStoragePath) == nil {
+        // if let oldToken <- acct.load<@KaratNFTMarket.Collection>(from: KaratNFTMarket.CollectionStoragePath) {
+        //   destroy oldToken
+        // }
+        acct.save(<-KaratNFTMarket.createEmptyCollection(), to: KaratNFTMarket.CollectionStoragePath)
+      }
+      acct.unlink(KaratNFTMarket.CollectionPublicPath)
+      acct.link<&KaratNFTMarket.Collection{KaratNFTMarket.CollectionPublic}>(KaratNFTMarket.CollectionPublicPath, target:KaratNFTMarket.CollectionStoragePath)
+    }
+  }
+}

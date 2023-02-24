@@ -1,0 +1,91 @@
+import FungibleToken from 0xf233dcee88fe0abe
+import NonFungibleToken from 0x1d7e57aa55817448
+import DapperUtilityCoin from 0xead892083b3e2c6c
+import PackNFT, AllDay from 0xe4cf4bdc1751c65d
+import NFTStorefront from 0x4eb8a10cb9f87357
+
+transaction(
+    storefrontAddress: Address, 
+    listingResourceID: UInt64, 
+    expectedPrice: UFix64, 
+    metadata: {String: String}
+) {
+    let paymentVault: @FungibleToken.Vault
+    let buyerNFTCollection: &AllDay.Collection{NonFungibleToken.CollectionPublic, AllDay.MomentNFTCollectionPublic}
+    let storefront: &NFTStorefront.Storefront{NFTStorefront.StorefrontPublic}
+    let listing: &NFTStorefront.Listing{NFTStorefront.ListingPublic}
+    let nflAllDayAuthAccount: AuthAccount
+    let mainDUCVault: &DapperUtilityCoin.Vault
+    let balanceBeforeTransfer: UFix64
+
+    prepare(nflAllDay: AuthAccount, dapper: AuthAccount, buyer: AuthAccount) {
+        // Initialize the AllDay collection if the buyer does not already have one
+        if buyer.borrow<&AllDay.Collection>(from: AllDay.CollectionStoragePath) == nil {
+            // save it to the account
+            buyer.save(<-AllDay.createEmptyCollection(), to: AllDay.CollectionStoragePath)
+
+            // create a public capability for the collection
+            buyer.link<&AllDay.Collection{NonFungibleToken.CollectionPublic, AllDay.MomentNFTCollectionPublic}>(
+                AllDay.CollectionPublicPath,
+                target: AllDay.CollectionStoragePath
+            )
+                ?? panic("Could not link AllDay.Collection Pub Path");
+        }
+
+        self.nflAllDayAuthAccount = nflAllDay
+
+        // Initialize the PackNFT collection if the buyer does not already have one
+        if buyer.borrow<&PackNFT.Collection>(from: PackNFT.CollectionStoragePath) == nil {
+            // save it to the account
+            buyer.save(<-PackNFT.createEmptyCollection(), to: PackNFT.CollectionStoragePath);
+
+            // create a public capability for the collection
+            buyer.link<&{NonFungibleToken.CollectionPublic}>(PackNFT.CollectionPublicPath, target: PackNFT.CollectionStoragePath)
+                ?? panic("Could not link PackNFT.Collection Pub Path");
+        }
+
+        self.storefront = getAccount(storefrontAddress)
+            .getCapability<&NFTStorefront.Storefront{NFTStorefront.StorefrontPublic}>(NFTStorefront.StorefrontPublicPath)
+            .borrow()
+            ?? panic("Could not borrow a reference to the storefront")
+
+        self.listing = self.storefront.borrowListing(listingResourceID: listingResourceID)
+                    ?? panic("No Listing with that ID in Storefront")
+        let salePrice = self.listing.getDetails().salePrice
+        
+        if expectedPrice != salePrice {
+            panic("Sale price not expected value")
+        }
+
+        self.mainDUCVault = dapper.borrow<&DapperUtilityCoin.Vault>(from: /storage/dapperUtilityCoinVault)
+     ?? panic("Could not borrow reference to Dapper Utility Coin vault")
+        self.balanceBeforeTransfer = self.mainDUCVault.balance
+        self.paymentVault <- self.mainDUCVault.withdraw(amount: salePrice)
+
+        self.buyerNFTCollection = buyer
+            .getCapability<&AllDay.Collection{NonFungibleToken.CollectionPublic, AllDay.MomentNFTCollectionPublic}>(
+                AllDay.CollectionPublicPath
+            )
+            .borrow()
+            ?? panic("Cannot borrow AllDay collection receiver from buyerAddress")
+    }
+
+    // The pre phase is executed after the prepare phase,
+    // and is used for checking if explicit conditions hold before executing the remainder of the transaction
+    pre {
+        self.nflAllDayAuthAccount.address == 0xe4cf4bdc1751c65d: "Requires valid authorizing signature"
+    }
+
+    execute {
+        let item <- self.listing.purchase(
+            payment: <-self.paymentVault
+        )
+
+        self.buyerNFTCollection.deposit(token: <-item)
+    }
+
+    post {
+        // Ensure there is no DUC leakage
+        self.mainDUCVault.balance == self.balanceBeforeTransfer: "transaction would leak DUC"
+    }
+}

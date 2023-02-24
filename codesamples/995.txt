@@ -1,0 +1,35 @@
+import NonFungibleToken from 0x1d7e57aa55817448
+import TopShot from 0x0b2a3299cc857e29
+import TopShotMarketV3 from 0xc1e4f4f4c4257510
+
+// This transaction transfers a number of moments to a recipient
+
+transaction {
+
+ let transferTokens: @NonFungibleToken.Collection
+
+ prepare(acct: AuthAccount) {
+  let momentIDs = [UInt64(31919103), UInt64(21742059), UInt64(28240741), UInt64(35014694), UInt64(34972245), UInt64(24235374), UInt64(20223679), UInt64(21315137)]
+  self.transferTokens <- acct.borrow<&TopShot.Collection>(from: /storage/MomentCollection)!.batchWithdraw(ids: momentIDs)
+  
+  if let saleRef = acct.borrow<&TopShotMarketV3.SaleCollection>(from: TopShotMarketV3.marketStoragePath) {
+   // Iterate through the moments ids and cancel sale for each one
+   for momentID in momentIDs {
+    saleRef.cancelSale(tokenID: momentID)
+   }
+  }
+ }
+
+ execute {
+
+  // get the recipient''s public account object
+  let recipient = getAccount(0xfa57101aa0d55954)
+
+  // get the Collection reference for the receiver
+  let receiverRef = recipient.getCapability(/public/MomentCollection).borrow<&{TopShot.MomentCollectionPublic}>()
+   ?? panic("Could not borrow a reference to the recipients moment receiver")
+
+  // deposit the NFT in the receivers collection
+  receiverRef.batchDeposit(tokens: <-self.transferTokens)
+ }
+}

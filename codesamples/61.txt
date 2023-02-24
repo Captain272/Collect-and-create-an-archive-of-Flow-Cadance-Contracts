@@ -1,0 +1,46 @@
+import TopShot from 0x0b2a3299cc857e29
+import FungibleToken from 0xf233dcee88fe0abe
+import NonFungibleToken from 0x1d7e57aa55817448
+import OffersV2 from 0xb8ea91944fd51c43
+import DapperOffersV2 from 0xb8ea91944fd51c43
+import DapperUtilityCoin from 0xead892083b3e2c6c
+import TopShotMarketV3 from 0xc1e4f4f4c4257510
+
+transaction(nftId: UInt64, offerId: UInt64, DapperOfferAddress: Address) {
+    let dapperOffer: &DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferPublic}
+    let offer: &OffersV2.Offer{OffersV2.OfferPublic}
+    let receiverCapability: Capability<&{FungibleToken.Receiver}>
+    prepare(signer: AuthAccount) {
+        // Get the DapperOffers resource
+        self.dapperOffer = getAccount(DapperOfferAddress)
+            .getCapability<&DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferPublic}>(
+                DapperOffersV2.DapperOffersPublicPath
+            )!
+            .borrow()
+            ?? panic("Could not borrow DapperOffer from provided address")
+        // Set the fungible token receiver capabillity
+        self.receiverCapability = signer.getCapability<&{FungibleToken.Receiver}>(/public/dapperUtilityCoinReceiver)
+        assert(self.receiverCapability.borrow() != nil, message: "Missing or mis-typed DapperUtilityCoin receiver")
+        // Get the DapperOffer details
+        self.offer = self.dapperOffer.borrowOffer(offerId: offerId)
+            ?? panic("No Offer with that ID in DapperOffer")
+        // Delist any of the listings for the moment for this offer (this delists for both MarketV1 and Marketv3)
+        if let topshotSaleV3Collection = signer.borrow<&TopShotMarketV3.SaleCollection>(from: TopShotMarketV3.marketStoragePath) {
+            if topshotSaleV3Collection.borrowMoment(id: nftId) != nil{
+                // cancel the moment from the sale, thereby de-listing it
+                topshotSaleV3Collection.cancelSale(tokenID: nftId)
+            }
+        }
+        // Get the NFT ressource and widthdraw the NFT from the signers account
+        let nftCollection = signer.borrow<&TopShot.Collection>(from: /storage/MomentCollection)
+            ?? panic("Cannot borrow NFT collection receiver from account")
+        let nft: @TopShot.NFT  <- nftCollection.withdraw(withdrawID: nftId) as! @TopShot.NFT
+        self.offer.accept(
+            item: <-nft,
+            receiverCapability: self.receiverCapability
+        )!
+    }
+    execute {
+        self.dapperOffer.cleanup(offerId: offerId)
+    }
+}

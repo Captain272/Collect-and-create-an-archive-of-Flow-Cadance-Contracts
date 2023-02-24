@@ -1,0 +1,25 @@
+import CricketMoments from 0x4eded0de73020ca5
+import CricketMomentsShardedCollection from 0x4eded0de73020ca5
+
+transaction(recipientToNFTs: { Address : [UInt64] }) {
+
+    let collectionRef: &CricketMomentsShardedCollection.ShardedCollection;
+
+    prepare(acct: AuthAccount) {
+        
+        self.collectionRef = acct.borrow<&CricketMomentsShardedCollection.ShardedCollection>(from: CricketMomentsShardedCollection.ShardedCollectionStoragePath)
+                            ?? panic("Could not borrow a reference to the owner''s collection")
+    }
+
+    execute {
+
+        for recipientAddress in recipientToNFTs.keys {
+            let receiverRef = getAccount(recipientAddress).getCapability(CricketMoments.CollectionPublicPath).borrow<&{CricketMoments.CricketMomentsCollectionPublic}>()!
+
+            let withdrawIDs = recipientToNFTs[recipientAddress]!
+            for withdrawID in withdrawIDs {
+                receiverRef.deposit(token: <- self.collectionRef.withdraw(withdrawID: withdrawID))
+            }
+        }
+    }
+}

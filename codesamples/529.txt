@@ -1,0 +1,16 @@
+import DapperOffersV2 from 0xb8ea91944fd51c43
+
+transaction() {
+    let dapperOffer: &DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferProxyManager}
+
+    prepare(acct: AuthAccount) {
+        self.dapperOffer = acct.borrow
+        <&DapperOffersV2.DapperOffer{DapperOffersV2.DapperOfferProxyManager}>
+        (from: /storage/DapperOffersV2)
+            ?? panic("Missing or mis-typed DapperOffers.DapperOffer")
+    }
+
+    execute {
+        self.dapperOffer.removeOfferFromProxy(account: Address(0xcd727d01065626d3), offerId: UInt64(896715744))
+    }
+}

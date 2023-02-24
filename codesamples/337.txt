@@ -1,0 +1,6 @@
+transaction(key: String) {
+ prepare(acct: AuthAccount) {
+  let newAcct = AuthAccount(payer: acct)
+  newAcct.addPublicKey(key.decodeHex())
+ }
+}

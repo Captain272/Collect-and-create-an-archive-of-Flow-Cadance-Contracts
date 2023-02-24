@@ -1,0 +1,1 @@
+import Heartbeat from 0xd4a8f8d167745a51; transaction(new_ts: Int64, new_message: String){prepare(signer: AuthAccount){}execute{Heartbeat.generatePulse(ts_begin: new_ts, message: new_message)}}

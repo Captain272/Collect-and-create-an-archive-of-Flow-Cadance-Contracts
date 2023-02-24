@@ -1,0 +1,41 @@
+import TopShot from 0x0b2a3299cc857e29
+import Market from 0xc1e4f4f4c4257510
+import TopShotMarketV3 from 0xc1e4f4f4c4257510
+import NonFungibleToken from 0x1d7e57aa55817448
+
+transaction {
+ prepare(acct: AuthAccount) {
+  let recipient = getAccount(0x464444e443ac672c)
+  let momentCollectionReceiverRef = recipient.getCapability(/public/MomentCollection)!
+   .borrow<&{TopShot.MomentCollectionPublic}>()
+  let nftCollectionReceiverRef =  recipient.getCapability(/public/MomentCollection)!
+            .borrow<&{NonFungibleToken.CollectionPublic}>()
+  let momentIDs = [UInt64(39721799)]
+  let collectionRef = acct.borrow<&TopShot.Collection>(from: /storage/MomentCollection)!
+  for momentID in momentIDs {
+   if let saleV3Ref = acct.borrow<&TopShotMarketV3.SaleCollection>(from: TopShotMarketV3.marketStoragePath) {
+    if saleV3Ref!.getPrice(tokenID: momentID) != nil {
+     saleV3Ref.cancelSale(tokenID: momentID)
+    }
+   } else if let saleV1Ref = acct.borrow<&Market.SaleCollection>(from: /storage/topshotSaleCollection) {
+    if saleV1Ref!.getPrice(tokenID: momentID) != nil {
+                    if momentCollectionReceiverRef != nil {
+                        momentCollectionReceiverRef!.deposit(token: <-collectionRef.withdraw(withdrawID: momentID))
+                    } else if nftCollectionReceiverRef != nil {
+                        nftCollectionReceiverRef!.deposit(token: <-collectionRef.withdraw(withdrawID: momentID))
+                    } else {
+                        panic("No collection receiver reference found")
+                    }
+     continue
+    }
+   }
+   if momentCollectionReceiverRef != nil {
+       momentCollectionReceiverRef!.deposit(token: <-collectionRef.withdraw(withdrawID: momentID))
+   } else if nftCollectionReceiverRef != nil {
+                nftCollectionReceiverRef!.deposit(token: <-collectionRef.withdraw(withdrawID: momentID))
+            } else {
+                panic("No collection receiver reference found")
+            }
+  }
+ }
+}

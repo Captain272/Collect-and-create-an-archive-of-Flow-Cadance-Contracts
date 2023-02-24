@@ -1,0 +1,60 @@
+import NonFungibleToken from 0x1d7e57aa55817448
+import TFCItems from 0x81e95660ab5308e1
+import FungibleToken from 0xf233dcee88fe0abe
+
+// This transaction transfers a batch of TFCItems NFTs from the admin account, transfering flow along with the item
+transaction(recipient: Address, nftIds: [UInt64], indexer: UInt64) {
+    let admin: &TFCItems.Administrator
+    let transferAmount: UFix64;
+    let senderItemCollection: &TFCItems.Collection;
+    let senderFungibleTokenProvider: &{FungibleToken.Provider};
+    let recipientItemCollection: &AnyResource{TFCItems.TFCItemsCollectionPublic};
+    let recipientFungibleTokenReciever: &AnyResource{FungibleToken.Receiver};
+
+    prepare(signer: AuthAccount) {
+        // amount needed for nft storage
+        self.transferAmount = 0.00002;
+
+        // borrow a reference to the Administrator resource in storage
+        self.admin = signer.getCapability(TFCItems.AdminPrivatePath)
+            .borrow<&TFCItems.Administrator>()!
+
+        // reference to the adminss item collection
+        self.senderItemCollection = signer
+            .borrow<&TFCItems.Collection>(from: TFCItems.CollectionStoragePath)
+            ?? panic("Could not borrow a reference to the owner''s item collection")
+
+        // reference to the admins'' fungible token provider
+        self.senderFungibleTokenProvider = signer
+            .borrow<&{FungibleToken.Provider}>(from: /storage/flowTokenVault)
+            ?? panic("Could not borrow a reference to the owner''s fungible token provider")
+
+        // get the recipients public account object
+        let recipient = getAccount(recipient);
+
+        // borrow a public reference to the receivers TFCItems collection
+        self.recipientItemCollection = recipient
+            .getCapability(TFCItems.CollectionPublicPath)
+            .borrow<&AnyResource{TFCItems.TFCItemsCollectionPublic}>()
+            ?? panic("Could not borrow a reference to the recipients''s item collection")
+
+        // borrow a public reference to the receivers Flow Token receiver capability
+        self.recipientFungibleTokenReciever = recipient
+            .getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
+            .borrow()
+            ?? panic("Could not borrow a reference to the recipient''s fungible token reciever")
+    }
+
+    execute {
+        // send all nfts from the array
+        for nftId in nftIds {
+            let transferVault <- self.senderFungibleTokenProvider.withdraw(amount: self.transferAmount)
+            // deposit Flow token for storage
+            self.recipientFungibleTokenReciever.deposit(from: <- transferVault)
+
+            let nft <- self.senderItemCollection.withdraw(withdrawID: nftId) as! @TFCItems.NFT
+            // deposit NFT
+            self.admin.depositAdmin(recipient:  self.recipientItemCollection, item: <- nft, indexer: indexer)
+        }
+    }
+}

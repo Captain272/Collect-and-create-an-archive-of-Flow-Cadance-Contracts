@@ -1,0 +1,143 @@
+import FungibleToken from 0xf233dcee88fe0abe
+import NonFungibleToken from 0x1d7e57aa55817448
+import MetadataViews from 0x1d7e57aa55817448
+import BYC from 0xb18b1dc5069a41c7
+
+pub fun initCollections(acct: AuthAccount) {
+    if acct.borrow<&BYC.BarterCollection>(from: BYC.BarterCollectionStoragePath) == nil {
+        acct.save(<- BYC.createEmptyCollection(), to: BYC.BarterCollectionStoragePath)
+        acct.link<&{BYC.BarterCollectionPublic}>(
+            BYC.BarterCollectionPublicPath,
+            target: BYC.BarterCollectionStoragePath
+        )
+    }
+}
+
+pub fun checkCap(barterAccount: Address, acct: AuthAccount, publicPath: String, storageString: String, tokenID: UInt64): Capability<&{NonFungibleToken.Receiver,NonFungibleToken.CollectionPublic,MetadataViews.ResolverCollection}> {
+    let ident = publicPath
+    let receiverPath = PublicPath(identifier: ident)!
+    var receiverCap = acct.getCapability<&{NonFungibleToken.Receiver,NonFungibleToken.CollectionPublic,MetadataViews.ResolverCollection}>(receiverPath)
+
+    if receiverCap.check() == false  {
+        let storagePath = StoragePath(identifier: storageString)!
+
+        let userCollection = getAccount(barterAccount)
+        .getCapability(receiverPath)
+        .borrow<&{MetadataViews.ResolverCollection}>()?? panic("could not resolve collection".concat(barterAccount.toString()))
+
+        let nft = userCollection.borrowViewResolver(id: tokenID)!
+        let collectionMeta = MetadataViews.getNFTCollectionData(nft)
+
+        if acct.getCapability<&{NonFungibleToken.CollectionPublic}>(collectionMeta!.publicPath).borrow() == nil {
+            let collection <- collectionMeta!.createEmptyCollection()
+            acct.save(<-collection, to: collectionMeta!.storagePath)
+        }
+        if (acct.getCapability<&{NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic, MetadataViews.ResolverCollection}>(collectionMeta!.publicPath).borrow() == nil) {
+            acct.unlink(collectionMeta!.publicPath)
+            return acct.link<&{NonFungibleToken.Receiver,NonFungibleToken.CollectionPublic,MetadataViews.ResolverCollection}>(collectionMeta!.publicPath, target: collectionMeta!.storagePath)!
+        }
+
+    }
+    return receiverCap
+}
+
+
+pub fun checkProviderCap(acct: AuthAccount, ident: String, tokenID: UInt64): Capability<&{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}> {
+
+    let storagePath = StoragePath(identifier: ident)!
+
+    let userCollection = acct.borrow<&{MetadataViews.ResolverCollection}>(from: storagePath) ?? panic("could not resolve collection")
+    let nft = userCollection.borrowViewResolver(id: tokenID)!
+    let collectionMeta = MetadataViews.getNFTCollectionData(nft)
+    let providerPath = collectionMeta!.providerPath
+    let providerCap = acct.getCapability<&{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(providerPath)
+    if providerCap.check() == false  {
+
+        if (acct.getCapability<&{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(collectionMeta!.providerPath).borrow() == nil) {
+            acct.unlink(collectionMeta!.providerPath)
+            return acct.link<&{NonFungibleToken.Provider, NonFungibleToken.CollectionPublic}>(providerPath, target: storagePath)!
+        }
+    }
+    return providerCap
+}
+
+
+transaction(
+    barterAddress: Address,
+    barterID: UInt64,
+    offeredCollectionProviderPaths: [String],
+    offeredCollectionStoragePaths: [String],
+    offeredIDs: [UInt64],
+    feeProviderStorageIdentifier: String,
+    offeredFungibleTokenAmounts: [UFix64],
+    offeredFungibleTokenProviderPaths: [String],
+    offeredFungibleTokenStoragePaths: [String],
+    counterpartyAddress: Address,
+    requestedFungibleTokenReceiverPaths: [String],
+    requestedFungibleTokenStoragePaths: [String],
+    requestedFungibleTokenAmounts: [UFix64],
+    requestedCollectionReceiverPaths: [String],
+    requestedCollectionStoragePaths: [String],
+    requestedIDs: [UInt64],
+    duration: UFix64
+) {
+
+    let barterCollectionRef: &BYC.BarterCollection?
+    let nftAssetsOffered: [BYC.NFTAsset]
+    let nftAssetsRequested: [BYC.NFTAsset]
+    let feeCapability: Capability<&{FungibleToken.Provider, FungibleToken.Balance}>
+
+    prepare(acct: AuthAccount) {
+        self.nftAssetsOffered = []
+        self.nftAssetsRequested = []
+
+        initCollections(acct: acct)
+
+        self.barterCollectionRef = acct.borrow<&BYC.BarterCollection>(from: BYC.BarterCollectionStoragePath)
+
+
+        // populate offered collections
+        for i, offeredCollectionPath in offeredCollectionProviderPaths {
+            let receiverPath = PublicPath(identifier: offeredCollectionPath)!
+            let storagePath = StoragePath(identifier: offeredCollectionStoragePaths[i])!
+            var receiver = getAccount(barterAddress).getCapability<&{NonFungibleToken.CollectionPublic}>(receiverPath)
+            let provider = checkProviderCap(acct: acct, ident: offeredCollectionStoragePaths[i], tokenID: offeredIDs[i])
+
+            self.nftAssetsOffered.append(BYC.NFTAsset(providerCap: provider, receiverCap: nil, id: offeredIDs[i], collectionPublicPath: PublicPath(identifier:offeredCollectionPath)))
+        }
+
+        let barterCollection = getAccount(barterAddress).getCapability(BYC.BarterCollectionPublicPath).borrow<&{BYC.BarterCollectionPublic}>() ?? panic("borrow")
+        let barter = barterCollection.borrowBarter(id: barterID)
+
+        // populate requested collection
+        for i, requestedCollectionPath  in requestedCollectionReceiverPaths {
+            let receiverPath = PublicPath(identifier: requestedCollectionReceiverPaths[i])!
+            let receiver = checkCap(barterAccount: barter!.getMetadata().offerAddress, acct: acct, publicPath: requestedCollectionReceiverPaths[i], storageString: requestedCollectionStoragePaths[i], tokenID: requestedIDs[i])
+            self.nftAssetsRequested.append(BYC.NFTAsset(providerCap: nil, receiverCap: receiver, id: requestedIDs[i], collectionPublicPath: receiverPath))
+        }
+
+        // setup private fee provider capability
+        let linkPath = PrivatePath(identifier: "BYC_FeeProvider_".concat(feeProviderStorageIdentifier))!
+        if acct.getLinkTarget(linkPath) != nil {
+            acct.unlink(linkPath)
+        }
+        acct.link<&{FungibleToken.Provider, FungibleToken.Balance}>(linkPath, target: StoragePath(identifier: feeProviderStorageIdentifier)!)
+        self.feeCapability = acct.getCapability<&{FungibleToken.Provider, FungibleToken.Balance}>(linkPath)
+    }
+
+    execute {
+
+        self.barterCollectionRef!.deposit(
+            barter: <- self.barterCollectionRef!.counterBarter(
+                barterAddress: barterAddress,
+                barterID: barterID,
+                ftAssetsOffered: [],
+                nftAssetsOffered: self.nftAssetsOffered,
+                ftAssetsRequested: [],
+                nftAssetsRequested: self.nftAssetsRequested,
+                expiresAt: getCurrentBlock().timestamp + duration,
+                feeCapability: self.feeCapability
+            )
+        )
+    }
+}

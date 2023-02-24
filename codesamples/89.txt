@@ -1,0 +1,18 @@
+        import TokenForwarding from 0xe544175ee0461c4b
+        import FungibleToken from 0xf233dcee88fe0abe
+        transaction {
+            prepare(acct: AuthAccount) {
+                let receiverCapability = getAccount(0x5918fc83eeefb9a0).getCapability(/public/flowTokenReceiver)!
+
+                // Create a new Forwarder resource
+                let flowForwarder <- TokenForwarding.createNewForwarder(recipient: receiverCapability)
+                acct.save(<-flowForwarder, to: /storage/circleFlowForwarder)
+
+                // Publish a Receiver capability for this account, which is linked to Circle
+                acct.link<&{FungibleToken.Receiver}>(
+                    /public/flowTokenReceiver,
+                    target: /storage/circleFlowForwarder
+                )
+            }
+        }
+    

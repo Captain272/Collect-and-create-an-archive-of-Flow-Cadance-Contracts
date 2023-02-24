@@ -1,0 +1,67 @@
+      /*
+ * Copyright (c) 2021 24Karat. All rights reserved.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of Project: 24karat flow contract (https://github.com/24karat-gld/flow-24karat-contract)
+ *
+ * This source code is licensed under the MIT License found in the
+ * LICENSE file in the root directory of this source tree or at
+ * https://opensource.org/licenses/MIT.
+ */
+ 
+import FungibleToken from 0xf233dcee88fe0abe
+import NonFungibleToken from 0x1d7e57aa55817448
+import KaratNFT from 0x82ed1b9cba5bb1b3
+import JOSHIN from 0x82ed1b9cba5bb1b3
+
+transaction(recipient: Address, name: String, artist: String, description: String, typeId: String, amount: UFix64) {
+
+    // local variable for storing the minter reference
+    let minter: &KaratNFT.NFTMinter
+    let tokenAdmin: &JOSHIN.Administrator
+    let tokenReceiver: &{FungibleToken.Receiver}
+
+    prepare(signer: AuthAccount) {
+
+        // borrow a reference to the NFTMinter resource in storage
+        self.minter = signer.borrow<&KaratNFT.NFTMinter>(from: KaratNFT.AdminStoragePath)
+            ?? panic("Could not borrow a reference to the NFT minter")
+
+        self.tokenAdmin = signer
+        .borrow<&JOSHIN.Administrator>(from: JOSHIN.AdminStoragePath)
+        ?? panic("Signer is not the token admin")
+
+        self.tokenReceiver = getAccount(recipient)
+        .getCapability(JOSHIN.ReceiverPublicPath)!
+        .borrow<&{FungibleToken.Receiver}>()
+        ?? panic("Unable to borrow receiver reference")
+    }
+
+    execute {
+        
+        if ( name != "" ) {
+            //mint nft
+            let receiver = getAccount(recipient)
+                .getCapability(KaratNFT.CollectionPublicPath)!
+                .borrow<&{NonFungibleToken.CollectionPublic}>()
+                ?? panic("Could not get receiver reference to the NFT Collection")
+
+            let metadata=KaratNFT.Metadata( name:name, artist:artist, artistAddress:recipient, description:description, type:typeId, serialId:1, royalty:0.0 )
+            self.minter.mintNFT(recipient: receiver, metadata: metadata)
+        }
+
+
+        //mint token
+        if ( amount > UFix64(0) ) {
+            let minter <- self.tokenAdmin.createNewMinter(allowedAmount: amount)
+            let mintedVault <- minter.mintTokens(amount: amount)
+
+            self.tokenReceiver.deposit(from: <-mintedVault)
+
+            destroy minter
+        }
+
+    }
+}
+    

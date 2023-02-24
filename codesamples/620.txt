@@ -1,0 +1,34 @@
+import TixologiTickets from 0x09e8665388e90671
+
+// This transaction is how a Tixologi tickets admin adds a created ticket type to a event
+// Parameters:
+//
+// eventID: the ID of the event to which a created ticket type is added
+// ticketTypeID: the ID of the ticketType being added
+transaction(eventID: UInt32, ticketTypeID: UInt32) {
+
+    // Local variable for the tixologi tickets Admin object
+    let adminRef: &TixologiTickets.Admin
+
+    prepare(acct: AuthAccount) {
+
+        // borrow a reference to the Admin resource in storage
+        self.adminRef = acct.borrow<&TixologiTickets.Admin>(from: /storage/TixologiTicketAdmin)
+            ?? panic("Could not borrow a reference to the Admin resource")
+    }
+
+    execute {
+        
+        // Borrow a reference to the event to be added to
+        let eventRef = self.adminRef.borrowEvent(eventID: eventID)
+
+        // Add the specified play ID
+        eventRef.addTicketType(ticketTypeID: ticketTypeID)
+    }
+
+    post {
+
+        TixologiTickets.getTicketTypesInEvent(eventID: eventID)!.contains(ticketTypeID): 
+            "event does not contain ticketTypeID"
+    }
+}

@@ -1,0 +1,22 @@
+import FazeUtilityCoin from 0x4eded0de73020ca5
+
+transaction(types: [String], amounts: [UFix64], from: [Address]) {
+
+    prepare(signer: AuthAccount) {  
+
+        let admin = signer
+        .borrow<&FazeUtilityCoin.Administrator>(from: FazeUtilityCoin.AdminStoragePath)
+        ?? panic("Signer is not the token admin")
+
+        assert(types.length == amounts.length && amounts.length == from.length, message: "Arrays must be of equal length")
+
+        for index, type in types {
+            switch type {
+            case "bonus_withdrawn":
+                admin.emitBonusWithdrawn(amount: amounts[index], from: from[index])
+            case "fuc_and_bonus_withdrawn":
+                admin.emitFUCAndBonusWithdrawn(amount: amounts[index], from: from[index])
+            }
+        }
+    }
+}

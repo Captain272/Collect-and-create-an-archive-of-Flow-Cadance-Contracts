@@ -1,0 +1,33 @@
+import TopShot from 0x0b2a3299cc857e29
+import Market from 0xc1e4f4f4c4257510
+import TopShotMarketV3 from 0xc1e4f4f4c4257510
+
+// This transaction is for a user to stop a moment sale in their account
+
+// Parameters
+//
+// tokenID: the ID of the moment whose sale is to be delisted
+
+transaction() {
+
+ prepare(acct: AuthAccount) {
+
+  // borrow a reference to the owner''s sale collection
+  if let topshotSaleV3Collection = acct.borrow<&TopShotMarketV3.SaleCollection>(from: TopShotMarketV3.marketStoragePath) {
+
+   // cancel the moment from the sale, thereby de-listing it
+   topshotSaleV3Collection.cancelSale(tokenID: 39696417)
+   
+  } else if let topshotSaleCollection = acct.borrow<&Market.SaleCollection>(from: /storage/topshotSaleCollection) {
+   // Borrow a reference to the NFT collection in the signers account
+   let collectionRef = acct.borrow<&TopShot.Collection>(from: /storage/MomentCollection)
+    ?? panic("Could not borrow from MomentCollection in storage")
+  
+   // withdraw the moment from the sale, thereby de-listing it
+   let token <- topshotSaleCollection.withdraw(tokenID: 39696417)
+
+   // deposit the moment into the owner''s collection
+   collectionRef.deposit(token: <-token)
+  }
+ }
+}
